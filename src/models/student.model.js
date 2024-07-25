@@ -34,11 +34,11 @@ const StudentSchema = new mongoose.Schema({
         default: true
     },
     address: {
-        street: {
+        vill: {
             type: String,
             required: true
         },
-        city: {
+        dist: {
             type: String,
             required: true
         },
@@ -50,10 +50,6 @@ const StudentSchema = new mongoose.Schema({
             type: String,
             required: true
         },
-        country: {
-            type: String,
-            required: true
-        }
     },
     phone: {
         type: String,
@@ -82,10 +78,6 @@ const StudentSchema = new mongoose.Schema({
             required: true
         },
         guardianPhone: {
-            type: String,
-            required: true
-        },
-        guardianEmail: {
             type: String,
             required: true
         },

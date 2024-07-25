@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose';
+import { InviteCode } from '../models/invite.model.js';
 
 const generateAccessAndRefreshTokens = async(userId) =>{
     try {
@@ -32,6 +33,16 @@ const registerStudent = asyncHandler(async (req, res) => {
     ) {
         throw new ApiError(400, 'All fields are required');
     }
+
+    // Validate invite code
+    const invite = await InviteCode.findOne({ code: uniqueCode, used: false });
+    if (!invite) {
+        throw new ApiError(400, 'Invalid or used invite code');
+    }
+
+    // Mark invite code as used
+    invite.used = true;
+    await invite.save();
 
     // Check for existing user
     const existingStudent = await Student.findOne({ email });
