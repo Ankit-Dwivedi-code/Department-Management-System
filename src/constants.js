@@ -1,1 +1,1 @@
-export const DB_NAME = 'dmsBackend'
+export const DB_NAME = "dms"

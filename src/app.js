@@ -16,6 +16,14 @@ app.use(express.static("public")) //to serve the files to all just like favicon
 app.use(cookieParser())  
 
 
+//Routes Import
+import studentRouter from './routes/student.route.js'
+
+
+
+//Routes Declaration
+
+app.use("/api/v1/students", studentRouter)
 
 
 
