@@ -7,14 +7,14 @@ import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose';
 import { InviteCode } from '../models/invite.model.js';
 
-const generateAccessAndRefreshTokens = async(userId) =>{
+const generateAccessAndRefreshTokens = async(studentId) =>{
     try {
-        const user = await User.findById(userId)
-        const accessToken =   user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const student = await Student.findById(studentId)
+        const accessToken =   student.generateAccessToken()
+        const refreshToken = student.generateRefreshToken()
 
-        user.refreshToken = refreshToken
-        await user.save({validateBeforeSave: false})
+        student.refreshToken = refreshToken
+        await student.save({validateBeforeSave: false})
 
         return {accessToken, refreshToken}
 
@@ -95,4 +95,221 @@ const registerStudent = asyncHandler(async (req, res) => {
     );
 });
 
-export {registerStudent}
+const loginStudent = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+  
+    // Check for empty fields
+    if (!email || !password) {
+      throw new ApiError(400, "Email and password are required");
+    }
+  
+    // Check for existing student
+    const student = await Student.findOne({ email });
+    if (!student) {
+      throw new ApiError(401, "Invalid email or password");
+    }
+  
+    // Check if the password is correct
+    const isPasswordCorrect = await student.isPasswordCorrect(password);
+    if (!isPasswordCorrect) {
+      throw new ApiError(401, "Invalid email or password");
+    }
+  
+    // Generate access and refresh tokens
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(student._id);
+  
+    // Save the refresh token to the database
+    student.refreshToken = refreshToken;
+    await student.save();
+  
+    const options = {
+      httpOnly: true,
+      secure: true, // Set to true if using HTTPS
+    };
+  
+    // Send response with tokens
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(new ApiResponse(200, { accessToken, refreshToken }, "Student logged in successfully"));
+  });
+
+  const logoutStudent = asyncHandler(async (req, res) => {
+    const studentId = req.student._id;
+  
+    // Find the student by ID and clear the refresh token
+    const student = await Student.findById(studentId);
+    if (!student) {
+      throw new ApiError(400, "Student not found");
+    }
+  
+    student.refreshToken = null;
+    await student.save({ validateBeforeSave: false });
+  
+    // Clear the cookies containing the access and refresh tokens
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+  
+    return res.status(200).json(new ApiResponse(200, {}, "Student logged out successfully"));
+  });
+
+  const renewRefreshToken = asyncHandler(async(req, res)=>{
+    const token = req.cookies?.refreshToken || req.body.refreshToken
+  
+    try {
+        const decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET)
+    
+        if(!decodedToken){
+            throw new ApiError(401, "Unauthorized request")
+        }
+    
+        const student = await Student.findById(decodedToken._id)
+    
+        if(!student){
+            throw new ApiError(401, "Inavild refresh Token")
+        }
+    
+    
+        if(token !== student.refreshToken){
+            throw new ApiError(401, "Token doesnot match")
+        }
+    
+        const {refreshToken, accessToken} = generateAccessAndRefreshTokens(student._id)
+    
+        const options = {
+            httpOnly : true,
+            secure : true
+        }
+    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(200, 
+                {
+                    accessToken,
+                    refreshToken
+                },
+                "Refresh token updated"
+            )
+        )
+    } catch (error) {
+        throw new ApiError(400, error?.message || "Invalid access token")
+    }
+  })
+
+  const changeCurrentPassword = asyncHandler(async(req, res)=>{
+
+    const {oldPassword, newPassword} = req.body
+    
+    if(!oldPassword || !newPassword){
+        throw new ApiError(400, "Please provide old and new password")
+    }
+  
+    // Find the student by ID
+    const student = await Student.findById(req.student._id);
+    if (!student) {
+      throw new ApiError(400, "Student not found, please provide password correctly");
+    }
+  
+     // Check if the old password is correct
+     const isPasswordCorrect = await student.isPasswordCorrect(oldPassword);
+     if (!isPasswordCorrect) {
+       throw new ApiError(401, "Invalid old password");
+     }
+  
+     student.password = newPassword
+    await student.save({validateBeforeSave : false })
+  
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"))
+  })
+  
+  //to get the cureent student
+  const getCurrentStudent = asyncHandler(async(req, res)=>{
+    // console.log(req.student);
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, req.student, "Current student fetched successfully")
+    )
+  })
+
+  const updateStudentAvatar = asyncHandler(async(req, res)=>{
+
+    const avatarLocalPath = req.file.path;
+    console.log(avatarLocalPath);
+  
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Please provide the avatar")
+    }
+  
+    const avatar =await uploadOnCloudinary(avatarLocalPath)
+  
+    if (!avatar.url) {
+        throw new ApiError(400, "Error while uploading on avatar")
+    }
+  
+    const student = await Student.findByIdAndUpdate(req.student?._id, 
+        {
+            $set:{
+                avatar : avatar.url
+            }
+        },
+        {new : true}
+    ).select("-password")
+  
+    if(!student){
+        throw new ApiError(400, "Student not found")
+    }
+  
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, student, "File uploaded successfully")
+    )
+  })
+
+  const updateStudentDetails = asyncHandler(async (req, res) => {
+    const { name, email, phone, address, year, fee, highestQualification, dateOfBirth, guardianDetails, admissionDate } = req.body;
+  
+    // Check if at least one field is provided
+    if (![name, email, phone, address, year, fee, highestQualification, dateOfBirth, guardianDetails, admissionDate].some(field => field)) {
+      throw new ApiError(400, "Please provide at least one detail to update");
+    }
+  
+    // Create an update object with only the fields that are provided
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (email) updateFields.email = email;
+    if (phone) updateFields.phone = phone;
+    if (address) updateFields.address = address;
+    if (year) updateFields.year = year;
+    if (fee) updateFields.fee = fee;
+    if (highestQualification) updateFields.highestQualification = highestQualification;
+    if (dateOfBirth) updateFields.dateOfBirth = dateOfBirth;
+    if (guardianDetails) updateFields.guardianDetails = guardianDetails;
+    if (admissionDate) updateFields.admissionDate = admissionDate;
+  
+    // Update the student details
+    const student = await Student.findByIdAndUpdate(req.student._id,
+      {
+        $set: updateFields
+      },
+      { new: true }
+    ).select("-password");
+  
+    if (!student) {
+      throw new ApiError(400, "Student not found");
+    }
+  
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, student, "Student details updated successfully")
+      );
+  });
+export {registerStudent, loginStudent, logoutStudent, renewRefreshToken, changeCurrentPassword, getCurrentStudent, updateStudentAvatar, updateStudentDetails}

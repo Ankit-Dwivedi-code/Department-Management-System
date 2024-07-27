@@ -110,7 +110,7 @@ StudentSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password)
  }
 
- StudentSchema.methods.generateAccessToken = async function () {
+ StudentSchema.methods.generateAccessToken =  function () {
     return jwt.sign(
      {
          _id : this._id,
@@ -124,7 +124,7 @@ StudentSchema.methods.isPasswordCorrect = async function (password) {
     )
  }
 
- StudentSchema.methods.generateRefreshToken = async function () {
+ StudentSchema.methods.generateRefreshToken =  function () {
     return jwt.sign(
         {
             _id : this._id,
