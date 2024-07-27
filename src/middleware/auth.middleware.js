@@ -1,5 +1,6 @@
 import { Admin } from "../models/admin.model.js";
 import { Student } from "../models/student.model.js";
+import { Teacher } from "../models/teacher.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from 'jsonwebtoken'
@@ -41,10 +42,6 @@ export const verifyAdmin = asyncHandler(async(req, _, next)=>{
 
 export const VerifyStudent = asyncHandler(async(req, _, next)=>{
 
-    //get token
-    //verify the jwt token by method : jwt.verify
-    //find the user by id 
-    //set req.user =  user
 
     try {
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
@@ -66,6 +63,34 @@ export const VerifyStudent = asyncHandler(async(req, _, next)=>{
         }
     
         req.student = student
+
+        next()
+    } catch (error) {
+        throw new ApiError(400, error?.message  || "Invalid access token")
+    }
+})
+
+export const VerifyTeacher = asyncHandler(async(req, _, next)=>{
+    try {
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+
+        if (typeof token !== 'string') {
+            throw new ApiError(400, "Invalid token format");
+        }
+    
+        if(!token){
+            throw new ApiError(401, "Unauthorized request")
+        }
+    
+        const verifiedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+
+        const teacher = await Teacher.findById(verifiedToken?._id).select("-password -refreshToken")
+    
+        if (!teacher) {
+            throw new ApiError(401, "Invalid access token")
+        }
+    
+        req.teacher = teacher
 
         next()
     } catch (error) {
