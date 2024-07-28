@@ -168,7 +168,7 @@ const generateInviteCode = asyncHandler(async (req, res) => {
 // Admin Logout
 const logoutAdmin = asyncHandler(async (req, res) => {
   //clear the cookie
-  //clear rhe accesstoken
+  //clear the accesstoken
   await Admin.findByIdAndUpdate(
     req.admin._id,
     {
