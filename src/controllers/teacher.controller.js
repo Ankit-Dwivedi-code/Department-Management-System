@@ -23,9 +23,9 @@ const generateAccessAndRefreshTokens = async (teacherId) => {
 
 // Register a new teacher
 const registerTeacher = asyncHandler(async (req, res) => {
-    const { name, email, password, department, phone, highestQualification, address, subjects } = req.body;
+    const { name, email, password,uniqueCode, department, phone, highestQualification, address, subjects } = req.body;
 
-    if ([name, email, password, department, phone, highestQualification, subjects].some(field => !field)) {
+    if ([name, email, password, uniqueCode, department, phone, highestQualification, subjects].some(field => !field)) {
         throw new ApiError(400, 'All required fields must be provided');
     }
 
@@ -41,6 +41,7 @@ const registerTeacher = asyncHandler(async (req, res) => {
         name,
         email,
         password,
+        uniqueCode,
         department,
         phone,
         highestQualification,
