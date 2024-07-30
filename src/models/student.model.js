@@ -64,6 +64,7 @@ const StudentSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    session: { type: String, required: true }, // New field
     highestQualification: {
         type: String,
         required: true

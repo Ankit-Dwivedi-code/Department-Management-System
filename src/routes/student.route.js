@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { upload } from "../middleware/multer.middleware.js" 
-import {changeCurrentPassword, getCurrentStudent, loginStudent, logoutStudent, registerStudent, renewRefreshToken, updateStudentAvatar, updateStudentDetails} from '../controllers/student.controller.js'
+import {changeCurrentPassword, getCurrentStudent, groupStudentsByYearAndSession, loginStudent, logoutStudent, registerStudent, renewRefreshToken, updateStudentAvatar, updateStudentDetails} from '../controllers/student.controller.js'
 import { VerifyStudent } from "../middleware/auth.middleware.js"
 
 const router = Router()
@@ -30,6 +30,8 @@ router.route("/get-student").get(VerifyStudent, getCurrentStudent)
 router.route("/update-avatar").patch(VerifyStudent,upload.single("avatar"), updateStudentAvatar)
 //Update Student details
 router.route("/update-details").patch(VerifyStudent, updateStudentDetails)
+// Group students by year and session
+router.route('/group-students').get(VerifyStudent, groupStudentsByYearAndSession);
 
 
 export default router

@@ -25,11 +25,11 @@ const generateAccessAndRefreshTokens = async(studentId) =>{
 
 const registerStudent = asyncHandler(async (req, res) => {
     // Get student details
-    const { name, email, password, roll, uniqueCode, dateOfBirth, address, phone, year, fee, highestQualification, guardianDetails } = req.body;
+    const { name, email, password, roll, uniqueCode, dateOfBirth, address, phone, year, fee,session, highestQualification, guardianDetails } = req.body;
 
     // Check for empty fields
     if (
-        [name, email, password, roll, uniqueCode, dateOfBirth, address, phone, year, fee, highestQualification, guardianDetails].some((field) => !field)
+        [name, email, password, roll, uniqueCode, dateOfBirth, address, phone, year, fee, session, highestQualification, guardianDetails].some((field) => !field)
     ) {
         throw new ApiError(400, 'All fields are required');
     }
@@ -76,6 +76,7 @@ const registerStudent = asyncHandler(async (req, res) => {
         fee,
         highestQualification,
         guardianDetails,
+        session,
         avatar: avatar.url,
     });
 
@@ -274,10 +275,10 @@ const loginStudent = asyncHandler(async (req, res) => {
   })
 
   const updateStudentDetails = asyncHandler(async (req, res) => {
-    const { name, email, phone, address, year, fee, highestQualification, dateOfBirth, guardianDetails, admissionDate } = req.body;
+    const { name, email, phone, address, year, fee, session, highestQualification, dateOfBirth, guardianDetails, admissionDate } = req.body;
   
     // Check if at least one field is provided
-    if (![name, email, phone, address, year, fee, highestQualification, dateOfBirth, guardianDetails, admissionDate].some(field => field)) {
+    if (![name, email, phone, address, year, fee, session, highestQualification, dateOfBirth, guardianDetails, admissionDate].some(field => field)) {
       throw new ApiError(400, "Please provide at least one detail to update");
     }
   
@@ -293,6 +294,7 @@ const loginStudent = asyncHandler(async (req, res) => {
     if (dateOfBirth) updateFields.dateOfBirth = dateOfBirth;
     if (guardianDetails) updateFields.guardianDetails = guardianDetails;
     if (admissionDate) updateFields.admissionDate = admissionDate;
+    if (session) updateFields.session = session;
   
     // Update the student details
     const student = await Student.findByIdAndUpdate(req.student._id,
@@ -312,4 +314,36 @@ const loginStudent = asyncHandler(async (req, res) => {
         new ApiResponse(200, student, "Student details updated successfully")
       );
   });
-export {registerStudent, loginStudent, logoutStudent, renewRefreshToken, changeCurrentPassword, getCurrentStudent, updateStudentAvatar, updateStudentDetails}
+
+  const groupStudentsByYearAndSession = asyncHandler(async (req, res) => {
+    const groupedStudents = await Student.aggregate([
+        {
+            $group: {
+                _id: {
+                    year: '$year',
+                    session: '$session',
+                },
+                students: {
+                    $push: {
+                       _id: "$_id",
+                        name: "$name",
+                        email: "$email",
+                        roll: "$roll",
+                        phone: "$phone",
+                        avatar: "$avatar",
+                        session: "$session",
+                    },
+                },
+            },
+        },
+        {
+            $sort: {
+                '_id.year': 1,
+                '_id.session': 1,
+            },
+        },
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, groupedStudents, 'Students grouped successfully'));
+});
+export {registerStudent, loginStudent, logoutStudent, renewRefreshToken, changeCurrentPassword, getCurrentStudent, updateStudentAvatar, updateStudentDetails, groupStudentsByYearAndSession}
